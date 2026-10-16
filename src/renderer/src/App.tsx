@@ -1,34 +1,60 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
+    <main className="sticker-app">
+      <header className="app-header">
+        <div className="brand">
+          <div className="brand-icon">S</div>
+
+          <div className="brand-text">
+            <h1>StickerIndex</h1>
+            <p>Your personal sticker library</p>
+          </div>
         </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
+      </header>
+
+      <section className="search-section">
+        <label className="search-box">
+          <span className="search-icon" aria-hidden="true">
+            ⌕
+          </span>
+
+          <input
+            type="search"
+            placeholder="Search stickers..."
+            aria-label="Search stickers"
+          />
+
+          <span className="search-shortcut">/</span>
+        </label>
+      </section>
+
+      <section className="gallery-section">
+        <div className="section-heading">
+          <h2>My stickers</h2>
+          <span className="sticker-count">0 stickers</span>
         </div>
-      </div>
-      <Versions></Versions>
-    </>
+
+        <div className="empty-gallery">
+          <div className="empty-icon" aria-hidden="true">
+            ✦
+          </div>
+
+          <h3>Your collection starts here</h3>
+
+          <p>
+            Import your favorite stickers to
+            <br />
+            see them in your collection.
+          </p>
+        </div>
+      </section>
+
+      <footer className="app-footer">
+        <span>StickerIndex</span>
+        <span>Personal sticker library</span>
+      </footer>
+    </main>
   )
 }
 
