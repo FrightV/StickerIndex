@@ -10,7 +10,7 @@ type Sticker = {
 }
 
 const stickers: Sticker[] = [
-  
+
 ]
 
 function App(): React.JSX.Element {
@@ -126,7 +126,9 @@ function App(): React.JSX.Element {
             </div>
 
             <h3>
-              {activeTab === 'all'
+              {normalizedSearch
+                ? 'No stickers found'
+                :activeTab === 'all'
                 ? 'Your collection starts here'
                 : activeTab === 'favorites'
                   ? 'No favorite stickers yet'
@@ -134,11 +136,13 @@ function App(): React.JSX.Element {
             </h3>
 
             <p>
-              {activeTab === 'all'
-                ? 'Add stickers to see them in your collection.'
-                : activeTab === 'favorites'
-                  ? 'Your favorite stickers will appear here.'
-                  : 'Stickers you use will appear here.'}
+              {normalizedSearch
+                ? 'Try another search term.'
+                : activeTab === 'all'
+                  ? 'Add stickers to see them in your collection.'
+                  : activeTab === 'favorites'
+                    ? 'Your favorite stickers will appear here.'
+                    : 'Stickers you use will appear here.'}
             </p>
           </div>
         )}
