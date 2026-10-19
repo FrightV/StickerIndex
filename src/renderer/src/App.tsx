@@ -10,13 +10,28 @@ type Sticker = {
 }
 
 const stickers: Sticker[] = [
-
+  {
+    id: 1,
+    name: 'Happy',
+    image: '/stickers/happy.jpg'
+  },
+  {
+    id: 2,
+    name: 'Surprised',
+    image: '/stickers/surprised.jpg'
+  },
+  {
+    id: 3,
+    name: 'Love',
+    image: '/stickers/love.jpg'
+  }
 ]
 
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
+  const [recentIds, setRecentIds] = useState<number[]>([])
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -29,8 +44,15 @@ function App(): React.JSX.Element {
     currentIds.includes(stickerId)
       ? currentIds.filter((id) => id !== stickerId)
       : [...currentIds, stickerId]
-  )
-}
+    )
+  }
+
+  const markAsRecent = (stickerId: number) => {
+    setRecentIds((currentIds) => [
+      stickerId,
+      ...currentIds.filter((id) => id !== stickerId)
+    ])
+  }
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
 
@@ -42,10 +64,22 @@ function App(): React.JSX.Element {
     const matchesTab =
       activeTab === 'all' ||
       (activeTab === 'favorites' &&
-        favoriteIds.includes(sticker.id))
+        favoriteIds.includes(sticker.id)) ||
+      (activeTab === 'recent' &&
+        recentIds.includes(sticker.id))
 
     return matchesSearch && matchesTab
   })
+
+  const orderedStickers =
+  activeTab === 'recent'
+    ? recentIds
+        .map((id) => stickers.find((sticker) => sticker.id === id))
+        .filter((sticker) => sticker !== undefined)
+        .filter((sticker) =>
+          sticker.name.toLowerCase().includes(normalizedSearch)
+        )
+    : visibleStickers
 
   return (
     <main className="sticker-app">
@@ -107,14 +141,14 @@ function App(): React.JSX.Element {
         <div className="section-heading">
           <h2>{sectionTitles[activeTab]}</h2>
           <span className="sticker-count">
-            {visibleStickers.length}{' '}
-            {visibleStickers.length === 1 ? 'sticker' : 'stickers'}
+            {orderedStickers.length}{' '}
+            {orderedStickers.length === 1 ? 'sticker' : 'stickers'}
           </span>
         </div>
 
-        {visibleStickers.length > 0 ? (
+        {orderedStickers.length > 0 ? (
           <div className="sticker-grid">
-            {visibleStickers.map((sticker) => (
+            {orderedStickers.map((sticker) => (
               <div className="sticker-card" key={sticker.id}>
                 <button
                   className="favorite-button"
@@ -134,7 +168,18 @@ function App(): React.JSX.Element {
                   {favoriteIds.includes(sticker.id) ? '★' : '☆'}
                 </button>
 
-                <img src={sticker.image} alt={sticker.name} draggable={false} />
+                <button
+                  className="sticker-image-button"
+                  type="button"
+                  title={`Use ${sticker.name}`}
+                  onClick={() => markAsRecent(sticker.id)}
+                >
+                  <img
+                    src={sticker.image}
+                    alt={sticker.name}
+                    draggable={false}
+                  />
+                </button>
 
                 <span>{sticker.name}</span>
               </div>
