@@ -16,12 +16,21 @@ const stickers: Sticker[] = [
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([])
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
     favorites: 'Favorites',
     recent: 'Recently used'
   }
+
+  const toggleFavorite = (stickerId: number) => {
+  setFavoriteIds((currentIds) =>
+    currentIds.includes(stickerId)
+      ? currentIds.filter((id) => id !== stickerId)
+      : [...currentIds, stickerId]
+  )
+}
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
 
@@ -30,7 +39,10 @@ function App(): React.JSX.Element {
       .toLowerCase()
       .includes(normalizedSearch)
 
-    const matchesTab = activeTab === 'all'
+    const matchesTab =
+      activeTab === 'all' ||
+      (activeTab === 'favorites' &&
+        favoriteIds.includes(sticker.id))
 
     return matchesSearch && matchesTab
   })
@@ -103,20 +115,29 @@ function App(): React.JSX.Element {
         {visibleStickers.length > 0 ? (
           <div className="sticker-grid">
             {visibleStickers.map((sticker) => (
-              <button
-                className="sticker-card"
-                key={sticker.id}
-                title={sticker.name}
-                aria-label={sticker.name}
-              >
-                <img
-                  src={sticker.image}
-                  alt={sticker.name}
-                  draggable={false}
-                />
+              <div className="sticker-card" key={sticker.id}>
+                <button
+                  className="favorite-button"
+                  type="button"
+                  aria-label={
+                    favoriteIds.includes(sticker.id)
+                      ? `Remove ${sticker.name} from favorites`
+                      : `Add ${sticker.name} to favorites`
+                  }
+                  title={
+                    favoriteIds.includes(sticker.id)
+                      ? 'Remove from favorites'
+                      : 'Add to favorites'
+                  }
+                  onClick={() => toggleFavorite(sticker.id)}
+                >
+                  {favoriteIds.includes(sticker.id) ? '★' : '☆'}
+                </button>
+
+                <img src={sticker.image} alt={sticker.name} draggable={false} />
 
                 <span>{sticker.name}</span>
-              </button>
+              </div>
             ))}
           </div>
         ) : (

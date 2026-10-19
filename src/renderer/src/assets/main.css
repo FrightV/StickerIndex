@@ -314,3 +314,39 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.sticker-card {
+  position: relative;
+  cursor: default;
+}
+
+.favorite-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--color-muted);
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.favorite-button:hover {
+  color: #ffd166;
+  background: #34313a;
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
