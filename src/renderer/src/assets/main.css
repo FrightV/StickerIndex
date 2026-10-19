@@ -257,3 +257,60 @@ input {
   color: #ffffff;
   background: #34364a;
 }
+
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+  padding: 2px 2px 12px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.sticker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.sticker-card:hover {
+  transform: translateY(-2px);
+  border-color: #666b98;
+  background: var(--color-surface-hover);
+}
+
+.sticker-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.sticker-card img {
+  display: block;
+  width: 100%;
+  max-width: 76px;
+  height: 76px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.sticker-card span {
+  width: 100%;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

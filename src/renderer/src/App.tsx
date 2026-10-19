@@ -3,8 +3,19 @@ import { useState } from 'react'
 
 type Tab = 'all' | 'favorites' | 'recent'
 
+type Sticker = {
+  id: number
+  name: string
+  image: string
+}
+
+const stickers: Sticker[] = [
+  
+]
+
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('all')
+  const [searchTerm, setSearchTerm] = useState('')
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -12,11 +23,17 @@ function App(): React.JSX.Element {
     recent: 'Recently used'
   }
 
-  const emptyMessages: Record<Tab, string> = {
-    all: 'Your collection starts here',
-    favorites: 'No favorite stickers yet',
-    recent: 'No recently used stickers'
-  }
+  const normalizedSearch = searchTerm.trim().toLowerCase()
+
+  const visibleStickers = stickers.filter((sticker) => {
+    const matchesSearch = sticker.name
+      .toLowerCase()
+      .includes(normalizedSearch)
+
+    const matchesTab = activeTab === 'all'
+
+    return matchesSearch && matchesTab
+  })
 
   return (
     <main className="sticker-app">
@@ -41,6 +58,8 @@ function App(): React.JSX.Element {
             type="search"
             placeholder="Search stickers..."
             aria-label="Search stickers"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
           />
 
           <span className="search-shortcut">/</span>
@@ -56,7 +75,9 @@ function App(): React.JSX.Element {
         </button>
 
         <button
-          className={activeTab === 'favorites' ? 'tab active' : 'tab'}
+          className={
+            activeTab === 'favorites' ? 'tab active' : 'tab'
+          }
           onClick={() => setActiveTab('favorites')}
         >
           Favorites
@@ -73,24 +94,54 @@ function App(): React.JSX.Element {
       <section className="gallery-section">
         <div className="section-heading">
           <h2>{sectionTitles[activeTab]}</h2>
-          <span className="sticker-count">0 stickers</span>
+          <span className="sticker-count">
+            {visibleStickers.length}{' '}
+            {visibleStickers.length === 1 ? 'sticker' : 'stickers'}
+          </span>
         </div>
 
-        <div className="empty-gallery">
-          <div className="empty-icon" aria-hidden="true">
-            ✦
+        {visibleStickers.length > 0 ? (
+          <div className="sticker-grid">
+            {visibleStickers.map((sticker) => (
+              <button
+                className="sticker-card"
+                key={sticker.id}
+                title={sticker.name}
+                aria-label={sticker.name}
+              >
+                <img
+                  src={sticker.image}
+                  alt={sticker.name}
+                  draggable={false}
+                />
+
+                <span>{sticker.name}</span>
+              </button>
+            ))}
           </div>
+        ) : (
+          <div className="empty-gallery">
+            <div className="empty-icon" aria-hidden="true">
+              ✦
+            </div>
 
-          <h3>{emptyMessages[activeTab]}</h3>
+            <h3>
+              {activeTab === 'all'
+                ? 'Your collection starts here'
+                : activeTab === 'favorites'
+                  ? 'No favorite stickers yet'
+                  : 'No recently used stickers'}
+            </h3>
 
-          <p>
-            {activeTab === 'all'
-              ? 'Import your favorite stickers to see them here.'
-              : activeTab === 'favorites'
-                ? 'Stickers you mark as favorites will appear here.'
-                : 'Stickers you use will appear here.'}
-          </p>
-        </div>
+            <p>
+              {activeTab === 'all'
+                ? 'Add stickers to see them in your collection.'
+                : activeTab === 'favorites'
+                  ? 'Your favorite stickers will appear here.'
+                  : 'Stickers you use will appear here.'}
+            </p>
+          </div>
+        )}
       </section>
 
       <footer className="app-footer">
