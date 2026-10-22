@@ -375,3 +375,10 @@ input {
   object-fit: contain;
   pointer-events: none;
 }
+
+.copy-status {
+  margin: 10px 0 0;
+  color: var(--color-accent);
+  font-size: 11px;
+  text-align: center;
+}

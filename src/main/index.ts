@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, clipboard, nativeImage, ClipboardItem } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -34,6 +34,46 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+ipcMain.handle('stickers:copy', async (_event, imageDataUrl: unknown) => {
+  if (typeof imageDataUrl !== 'string') {
+    return false
+  }
+
+  if (imageDataUrl.length > 12_000_000) {
+    return false
+  }
+
+  const validDataUrl = /^data:image\/(png|jpeg|webp|jpg);base64,[A-Za-z0-9+/]*={0,2}$/
+
+  if (!validDataUrl.test(imageDataUrl)) {
+    return false
+  }
+
+  try {
+    const image = nativeImage.createFromDataURL(imageDataUrl)
+
+    if (image.isEmpty()) {
+      return false
+    }
+
+    const pngData = new Uint8Array(image.toPNG())
+    const pngBlob = new Blob([pngData], {
+      type: 'image/png'
+    })
+
+    await clipboard.write([
+      new ClipboardItem({
+        'image/png': pngBlob
+      })
+    ])
+
+    return true
+  } catch (error) {
+    console.error('Failed to copy sticker:', error)
+    return false
+  }
+})
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
