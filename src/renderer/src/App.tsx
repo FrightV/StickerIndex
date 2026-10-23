@@ -1,5 +1,4 @@
-
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 type Tab = 'all' | 'favorites' | 'recent'
 
@@ -13,7 +12,7 @@ const stickers: Sticker[] = [
   {
     id: 1,
     name: 'Happy',
-    image: '/stickers/happy.jpg'
+    image: '/stickers/happy.png'
   },
   {
     id: 2,
@@ -32,6 +31,8 @@ function App(): React.JSX.Element {
   const [searchTerm, setSearchTerm] = useState('')
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   const [recentIds, setRecentIds] = useState<number[]>([])
+  const [copyStatus, setCopyStatus] = useState('')
+  const copyRequestId = useRef(0)
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -52,6 +53,69 @@ function App(): React.JSX.Element {
       stickerId,
       ...currentIds.filter((id) => id !== stickerId)
     ])
+  }
+
+  const handleStickerClick = async (sticker: Sticker) => {
+    const requestId = ++copyRequestId.current
+    try {
+      setCopyStatus('Copying...')
+
+      const response = await fetch(sticker.image)
+
+      if (!response.ok) {
+        throw new Error('Could not load sticker image')
+      }
+
+      const blob = await response.blob()
+
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
+        throw new Error('Unsupported image format')
+      }
+
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result)
+          } else {
+            reject(new Error('Could not convert image'))
+          }
+        }
+
+        reader.onerror = () => reject(new Error('Could not read image'))
+        reader.readAsDataURL(blob)
+      })
+
+      const copied = await window.api.copySticker(imageDataUrl)
+
+      if (!copied) {
+        throw new Error('Could not copy sticker')
+      }
+
+      markAsRecent(sticker.id)
+
+      if (requestId === copyRequestId.current) {
+        setCopyStatus(`${sticker.name} copied!`)
+
+        window.setTimeout(() => {
+          if (requestId === copyRequestId.current) {
+            setCopyStatus('')
+          }
+        }, 2500)
+      }
+      } catch (error) {
+        console.error('Sticker copy failed:', error)
+
+        if (requestId === copyRequestId.current) {
+          setCopyStatus('Could not copy sticker.')
+          window.setTimeout(() => {
+            if (requestId === copyRequestId.current) {
+              setCopyStatus('')
+            }
+          }, 2500)
+      }
+    }
   }
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
@@ -137,6 +201,12 @@ function App(): React.JSX.Element {
         </button>
       </nav>
 
+      {copyStatus && (
+        <p className="copy-status" role="status" aria-live="polite">
+          {copyStatus}
+        </p>
+      )}
+
       <section className="gallery-section">
         <div className="section-heading">
           <h2>{sectionTitles[activeTab]}</h2>
@@ -172,7 +242,7 @@ function App(): React.JSX.Element {
                   className="sticker-image-button"
                   type="button"
                   title={`Use ${sticker.name}`}
-                  onClick={() => markAsRecent(sticker.id)}
+                  onClick={() => void handleStickerClick(sticker)}
                 >
                   <img
                     src={sticker.image}
