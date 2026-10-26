@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type Tab = 'all' | 'favorites' | 'recent'
 
 type Sticker = {
-  id: number
+  id: number | string
   name: string
   image: string
 }
@@ -29,8 +29,9 @@ const stickers: Sticker[] = [
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([])
-  const [recentIds, setRecentIds] = useState<number[]>([])
+  const [allStickers, setAllStickers] = useState<Sticker[]>(stickers)
+  const [favoriteIds, setFavoriteIds] = useState<(number | string)[]>([])
+  const [recentIds, setRecentIds] = useState<(number | string)[]>([])
   const [copyStatus, setCopyStatus] = useState('')
   const copyRequestId = useRef(0)
   const [importStatus, setImportStatus] = useState('')
@@ -41,7 +42,29 @@ function App(): React.JSX.Element {
     recent: 'Recently used'
   }
 
-  const toggleFavorite = (stickerId: number) => {
+  useEffect(() => {
+  let cancelled = false
+
+  const loadStickers = async () => {
+    try {
+      const importedStickers = await window.api.listStickers()
+
+      if (!cancelled) {
+        setAllStickers([...stickers, ...importedStickers])
+      }
+    } catch (error) {
+      console.error('Failed to load imported stickers:', error)
+    }
+  }
+
+  void loadStickers()
+
+  return () => {
+    cancelled = true
+  }
+}, [])
+
+  const toggleFavorite = (stickerId: number | string) => {
   setFavoriteIds((currentIds) =>
     currentIds.includes(stickerId)
       ? currentIds.filter((id) => id !== stickerId)
@@ -49,7 +72,7 @@ function App(): React.JSX.Element {
     )
   }
 
-  const markAsRecent = (stickerId: number) => {
+  const markAsRecent = (stickerId: number | string) => {
     setRecentIds((currentIds) => [
       stickerId,
       ...currentIds.filter((id) => id !== stickerId)
@@ -61,32 +84,40 @@ function App(): React.JSX.Element {
     try {
       setCopyStatus('Copying...')
 
-      const response = await fetch(sticker.image)
+      let imageDataUrl: string
 
-      if (!response.ok) {
-        throw new Error('Could not load sticker image')
-      }
+      if (sticker.image.startsWith('data:image/')) {
+        // A imagem importada já está em formato Data URL.
+        imageDataUrl = sticker.image
+      } else {
+        // Imagens de demonstração precisam ser carregadas pelo fetch.
+        const response = await fetch(sticker.image)
 
-      const blob = await response.blob()
-
-      if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
-        throw new Error('Unsupported image format')
-      }
-
-      const imageDataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-
-        reader.onload = () => {
-          if (typeof reader.result === 'string') {
-            resolve(reader.result)
-          } else {
-            reject(new Error('Could not convert image'))
-          }
+        if (!response.ok) {
+          throw new Error('Could not load sticker image')
         }
 
-        reader.onerror = () => reject(new Error('Could not read image'))
-        reader.readAsDataURL(blob)
-      })
+        const blob = await response.blob()
+
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
+          throw new Error('Unsupported image format')
+        }
+
+        imageDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              resolve(reader.result)
+            } else {
+              reject(new Error('Could not convert image'))
+            }
+          }
+
+          reader.onerror = () => reject(new Error('Could not read image'))
+          reader.readAsDataURL(blob)
+        })
+      }
 
       const copied = await window.api.copySticker(imageDataUrl)
 
@@ -120,27 +151,29 @@ function App(): React.JSX.Element {
   }
 
   const handleImportStickers = async () => {
-  try {
-    setImportStatus('Selecting files...')
+    try {
+      setImportStatus('Selecting files...')
 
-    const filePaths = await window.api.selectStickerFiles()
+      const filePaths = await window.api.selectStickerFiles()
 
-    if (filePaths.length === 0) {
-      setImportStatus('No files selected.')
-      return
+      if (filePaths.length === 0) {
+        setImportStatus('No files selected.')
+        return
+      }
+
+      const importedStickers = await window.api.listStickers()
+
+      setAllStickers([...stickers, ...importedStickers])
+      setImportStatus(`${filePaths.length} file(s) imported.`)
+    } catch (error) {
+      console.error('Sticker import failed:', error)
+      setImportStatus('Could not import stickers.')
     }
-
-    setImportStatus(`${filePaths.length} file(s) selected.`)
-    console.log('Selected sticker files:', filePaths)
-  } catch (error) {
-    console.error('Sticker selection failed:', error)
-    setImportStatus('Could not select files.')
   }
-}
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
 
-  const visibleStickers = stickers.filter((sticker) => {
+  const visibleStickers = allStickers.filter((sticker) => {
     const matchesSearch = sticker.name
       .toLowerCase()
       .includes(normalizedSearch)
@@ -158,7 +191,7 @@ function App(): React.JSX.Element {
   const orderedStickers =
   activeTab === 'recent'
     ? recentIds
-        .map((id) => stickers.find((sticker) => sticker.id === id))
+        .map((id) => allStickers.find((sticker) => sticker.id === id))
         .filter((sticker) => sticker !== undefined)
         .filter((sticker) =>
           sticker.name.toLowerCase().includes(normalizedSearch)
