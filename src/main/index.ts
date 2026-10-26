@@ -1,7 +1,18 @@
-import { app, shell, BrowserWindow, ipcMain, clipboard, nativeImage, ClipboardItem } from 'electron'
-import { join } from 'path'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  clipboard,
+  nativeImage,
+  ClipboardItem,
+  dialog
+} from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { copyFile, mkdir, readdir, readFile } from 'node:fs/promises'
+import { basename, extname, join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 function createWindow(): void {
   // Create the browser window.
@@ -73,6 +84,98 @@ ipcMain.handle('stickers:copy', async (_event, imageDataUrl: unknown) => {
     console.error('Failed to copy sticker:', error)
     return false
   }
+})
+
+ipcMain.handle('stickers:select-files', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Import stickers',
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      {
+        name: 'Image files',
+        extensions: ['png', 'jpg', 'jpeg', 'webp']
+      }
+    ]
+  })
+
+  if (result.canceled) {
+    return []
+  }
+
+  try {
+    const stickersDirectory = join(app.getPath('userData'), 'stickers')
+
+    await mkdir(stickersDirectory, { recursive: true })
+
+    const importedPaths: string[] = []
+
+    for (const sourcePath of result.filePaths) {
+      const extension = extname(sourcePath).toLowerCase()
+
+      const allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp']
+
+      if (!allowedExtensions.includes(extension)) {
+        continue
+      }
+
+      const originalName = basename(sourcePath, extension)
+
+      const safeName =
+        originalName
+          .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+          .trim()
+          .replace(/[. ]+$/, '') || 'sticker'
+
+      const destinationPath = join(stickersDirectory, `${safeName}-${randomUUID()}${extension}`)
+
+      await copyFile(sourcePath, destinationPath)
+
+      importedPaths.push(destinationPath)
+    }
+
+    return importedPaths
+  } catch (error) {
+    console.error('Failed to import stickers:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('stickers:list', async () => {
+  const stickersDirectory = join(app.getPath('userData'), 'stickers')
+
+  await mkdir(stickersDirectory, { recursive: true })
+
+  const files = await readdir(stickersDirectory, {
+    withFileTypes: true
+  })
+
+  const imageFiles = files.filter((file) => file.isFile() && /\.(png|jpe?g|webp)$/i.test(file.name))
+
+  const stickers = await Promise.all(
+    imageFiles.map(async (file) => {
+      const extension = extname(file.name).toLowerCase()
+      const filePath = join(stickersDirectory, file.name)
+      const imageBuffer = await readFile(filePath)
+
+      const mimeType =
+        extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg'
+
+      const originalName = basename(file.name, extension)
+      const name =
+        originalName
+          .replace(/-[0-9a-f-]{36}$/i, '')
+          .replace(/[_-]+/g, ' ')
+          .trim() || 'Sticker'
+
+      return {
+        id: file.name,
+        name,
+        image: `data:${mimeType};base64,${imageBuffer.toString('base64')}`
+      }
+    })
+  )
+
+  return stickers
 })
 
 // This method will be called when Electron has finished

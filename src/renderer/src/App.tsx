@@ -33,6 +33,7 @@ function App(): React.JSX.Element {
   const [recentIds, setRecentIds] = useState<number[]>([])
   const [copyStatus, setCopyStatus] = useState('')
   const copyRequestId = useRef(0)
+  const [importStatus, setImportStatus] = useState('')
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -118,6 +119,25 @@ function App(): React.JSX.Element {
     }
   }
 
+  const handleImportStickers = async () => {
+  try {
+    setImportStatus('Selecting files...')
+
+    const filePaths = await window.api.selectStickerFiles()
+
+    if (filePaths.length === 0) {
+      setImportStatus('No files selected.')
+      return
+    }
+
+    setImportStatus(`${filePaths.length} file(s) selected.`)
+    console.log('Selected sticker files:', filePaths)
+  } catch (error) {
+    console.error('Sticker selection failed:', error)
+    setImportStatus('Could not select files.')
+  }
+}
+
   const normalizedSearch = searchTerm.trim().toLowerCase()
 
   const visibleStickers = stickers.filter((sticker) => {
@@ -175,6 +195,20 @@ function App(): React.JSX.Element {
           <span className="search-shortcut">/</span>
         </label>
       </section>
+
+      <button
+        type="button"
+        className="import-button"
+        onClick={() => void handleImportStickers()}
+      >
+        + Import sticker
+      </button>
+
+      {importStatus && (
+        <p role="status" aria-live="polite">
+          {importStatus}
+        </p>
+      )}
 
       <nav className="tabs" aria-label="Sticker sections">
         <button

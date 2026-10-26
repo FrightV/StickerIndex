@@ -4,7 +4,12 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   copySticker: (imageDataUrl: string): Promise<boolean> =>
-    ipcRenderer.invoke('stickers:copy', imageDataUrl)
+    ipcRenderer.invoke('stickers:copy', imageDataUrl),
+
+  selectStickerFiles: (): Promise<string[]> => ipcRenderer.invoke('stickers:select-files'),
+
+  listStickers: (): Promise<Array<{ id: string; name: string; image: string }>> =>
+    ipcRenderer.invoke('stickers:list')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
