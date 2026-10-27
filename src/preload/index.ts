@@ -9,7 +9,10 @@ const api = {
   selectStickerFiles: (): Promise<string[]> => ipcRenderer.invoke('stickers:select-files'),
 
   listStickers: (): Promise<Array<{ id: string; name: string; image: string }>> =>
-    ipcRenderer.invoke('stickers:list')
+    ipcRenderer.invoke('stickers:list'),
+
+  deleteSticker: (stickerId: string): Promise<boolean> =>
+    ipcRenderer.invoke('stickers:delete', stickerId)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

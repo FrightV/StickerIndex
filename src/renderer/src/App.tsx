@@ -87,10 +87,8 @@ function App(): React.JSX.Element {
       let imageDataUrl: string
 
       if (sticker.image.startsWith('data:image/')) {
-        // A imagem importada já está em formato Data URL.
         imageDataUrl = sticker.image
       } else {
-        // Imagens de demonstração precisam ser carregadas pelo fetch.
         const response = await fetch(sticker.image)
 
         if (!response.ok) {
@@ -168,6 +166,49 @@ function App(): React.JSX.Element {
     } catch (error) {
       console.error('Sticker import failed:', error)
       setImportStatus('Could not import stickers.')
+    }
+  }
+
+  const handleDeleteSticker = async (sticker: Sticker) => {
+    if (typeof sticker.id !== 'string') {
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${sticker.name}" permanently?`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const deleted = await window.api.deleteSticker(sticker.id)
+
+      if (!deleted) {
+        throw new Error('Could not delete sticker file')
+      }
+
+      setAllStickers((current) =>
+        current.filter((item) => item.id !== sticker.id)
+      )
+
+      setFavoriteIds((current) =>
+        current.filter((id) => id !== sticker.id)
+      )
+
+      setRecentIds((current) =>
+        current.filter((id) => id !== sticker.id)
+      )
+
+      setCopyStatus(`${sticker.name} deleted.`)
+
+      window.setTimeout(() => {
+        setCopyStatus('')
+      }, 2500)
+    } catch (error) {
+      console.error('Sticker deletion failed:', error)
+      setCopyStatus('Could not delete sticker.')
     }
   }
 
@@ -317,6 +358,21 @@ function App(): React.JSX.Element {
                     draggable={false}
                   />
                 </button>
+
+                {typeof sticker.id === 'string' && (
+                  <button
+                    type="button"
+                    className="delete-sticker-button"
+                    title="Delete sticker"
+                    aria-label={`Delete ${sticker.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void handleDeleteSticker(sticker)
+                    }}
+                  >
+                    🗑
+                  </button>
+                )}
 
                 <span>{sticker.name}</span>
               </div>

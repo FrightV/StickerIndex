@@ -382,3 +382,21 @@ input {
   font-size: 11px;
   text-align: center;
 }
+
+.delete-sticker-button {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #a0a0a0;
+  cursor: pointer;
+  padding: 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.delete-sticker-button:hover {
+  background-color: #512525;
+  color: #ff6b6b;
+}
