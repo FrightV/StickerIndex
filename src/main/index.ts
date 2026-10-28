@@ -8,7 +8,8 @@ import {
   ClipboardItem,
   dialog,
   Menu,
-  Tray
+  Tray,
+  globalShortcut
 } from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -61,6 +62,19 @@ function createTray(): void {
       createWindow()
     }
   })
+}
+
+function showMainWindow(): void {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+
+    mainWindow.show()
+    mainWindow.focus()
+  } else {
+    createWindow()
+  }
 }
 
 function createWindow(): void {
@@ -283,6 +297,14 @@ app.whenReady().then(() => {
   createTray()
   createWindow()
 
+  const registered = globalShortcut.register('CommandOrControl+Shift+S', () => {
+    showMainWindow()
+  })
+
+  if (!registered) {
+    console.error('Could not register the StickerIndex shortcut.')
+  }
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -290,6 +312,10 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {})
