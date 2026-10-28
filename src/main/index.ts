@@ -6,7 +6,9 @@ import {
   clipboard,
   nativeImage,
   ClipboardItem,
-  dialog
+  dialog,
+  Menu,
+  Tray
 } from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -14,8 +16,61 @@ import { copyFile, mkdir, readdir, readFile, unlink } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
+let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+let isQuitting = false
+
+function createTray(): void {
+  if (tray) return
+
+  tray = new Tray(icon)
+  tray.setToolTip('StickerIndex')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Open StickerIndex',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        } else {
+          createWindow()
+        }
+      }
+    },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      }
+    }
+  ])
+
+  tray.setContextMenu(contextMenu)
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide()
+      } else {
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    } else {
+      createWindow()
+    }
+  })
+}
+
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  if (mainWindow) {
+    mainWindow.show()
+    mainWindow.focus()
+    return
+  }
+
+  const window = new BrowserWindow({
     width: 420,
     height: 600,
     show: false,
@@ -27,19 +82,32 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  mainWindow = window
+
+  window.on('ready-to-show', () => {
+    window.show()
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  window.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      window.hide()
+    }
+  })
+
+  window.on('closed', () => {
+    mainWindow = null
+  })
+
+  window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
@@ -204,16 +272,15 @@ ipcMain.handle('stickers:delete', async (_event, stickerId: unknown) => {
 })
 
 app.whenReady().then(() => {
-  // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  createTray()
   createWindow()
 
   app.on('activate', function () {
@@ -221,8 +288,8 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+app.on('before-quit', () => {
+  isQuitting = true
 })
+
+app.on('window-all-closed', () => {})
