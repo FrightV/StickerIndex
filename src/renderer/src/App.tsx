@@ -9,21 +9,6 @@ type Sticker = {
 }
 
 const stickers: Sticker[] = [
-  {
-    id: 1,
-    name: 'Happy',
-    image: '/stickers/happy.png'
-  },
-  {
-    id: 2,
-    name: 'Surprised',
-    image: '/stickers/surprised.jpg'
-  },
-  {
-    id: 3,
-    name: 'Love',
-    image: '/stickers/love.jpg'
-  }
 ]
 
 function App(): React.JSX.Element {
@@ -35,6 +20,7 @@ function App(): React.JSX.Element {
   const [copyStatus, setCopyStatus] = useState('')
   const copyRequestId = useRef(0)
   const [importStatus, setImportStatus] = useState('')
+  const importStatusTimeout = useRef<number | null>(null)
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -61,6 +47,10 @@ function App(): React.JSX.Element {
 
   return () => {
     cancelled = true
+
+    if (importStatusTimeout.current !== null) {
+      window.clearTimeout(importStatusTimeout.current)
+    }
   }
 }, [])
 
@@ -150,23 +140,41 @@ function App(): React.JSX.Element {
 
   const handleImportStickers = async () => {
     try {
+      if (importStatusTimeout.current !== null) {
+        window.clearTimeout(importStatusTimeout.current)
+        importStatusTimeout.current = null
+      }
+
       setImportStatus('Selecting files...')
 
       const filePaths = await window.api.selectStickerFiles()
 
       if (filePaths.length === 0) {
-        setImportStatus('No files selected.')
+        showImportStatus('No files selected.')
         return
       }
 
       const importedStickers = await window.api.listStickers()
 
       setAllStickers([...stickers, ...importedStickers])
-      setImportStatus(`${filePaths.length} file(s) imported.`)
+      showImportStatus(`${filePaths.length} file(s) imported.`)
     } catch (error) {
       console.error('Sticker import failed:', error)
-      setImportStatus('Could not import stickers.')
+      showImportStatus('Could not import stickers.')
     }
+  }
+
+  const showImportStatus = (message: string) => {
+    if (importStatusTimeout.current !== null) {
+      window.clearTimeout(importStatusTimeout.current)
+    }
+
+    setImportStatus(message)
+
+    importStatusTimeout.current = window.setTimeout(() => {
+      setImportStatus('')
+      importStatusTimeout.current = null
+    }, 1500)
   }
 
   const handleDeleteSticker = async (sticker: Sticker) => {
@@ -279,7 +287,7 @@ function App(): React.JSX.Element {
       </button>
 
       {importStatus && (
-        <p role="status" aria-live="polite">
+        <p className="import-status" role="status" aria-live="polite">
           {importStatus}
         </p>
       )}
