@@ -13,7 +13,7 @@ import {
 } from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { copyFile, mkdir, readdir, readFile, unlink } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, stat, unlink } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -230,8 +230,22 @@ ipcMain.handle('stickers:list', async () => {
 
   const imageFiles = files.filter((file) => file.isFile() && /\.(png|jpe?g|webp)$/i.test(file.name))
 
-  const stickers = await Promise.all(
+  const imageFilesWithDates = await Promise.all(
     imageFiles.map(async (file) => {
+      const filePath = join(stickersDirectory, file.name)
+      const fileStats = await stat(filePath)
+
+      return {
+        file,
+        createdAt: fileStats.birthtimeMs || fileStats.mtimeMs
+      }
+    })
+  )
+
+  imageFilesWithDates.sort((a, b) => b.createdAt - a.createdAt)
+
+  const stickers = await Promise.all(
+    imageFilesWithDates.map(async ({ file }) => {
       const extension = extname(file.name).toLowerCase()
       const filePath = join(stickersDirectory, file.name)
       const imageBuffer = await readFile(filePath)
