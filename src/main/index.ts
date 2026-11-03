@@ -13,7 +13,7 @@ import {
 } from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { copyFile, mkdir, readdir, readFile, stat, unlink } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -269,6 +269,33 @@ ipcMain.handle('stickers:list', async () => {
   )
 
   return stickers
+})
+
+ipcMain.handle('stickers:load-preferences', async () => {
+  const preferencesPath = join(app.getPath('userData'), 'preferences.json')
+
+  try {
+    const content = await readFile(preferencesPath, 'utf-8')
+    const preferences = JSON.parse(content)
+
+    return {
+      favoriteIds: Array.isArray(preferences.favoriteIds) ? preferences.favoriteIds : [],
+      recentIds: Array.isArray(preferences.recentIds) ? preferences.recentIds : []
+    }
+  } catch {
+    return {
+      favoriteIds: [],
+      recentIds: []
+    }
+  }
+})
+
+ipcMain.handle('stickers:save-preferences', async (_event, preferences) => {
+  const preferencesPath = join(app.getPath('userData'), 'preferences.json')
+
+  await writeFile(preferencesPath, JSON.stringify(preferences, null, 2), 'utf-8')
+
+  return true
 })
 
 ipcMain.handle('stickers:delete', async (_event, stickerId: unknown) => {

@@ -5,6 +5,16 @@ interface StickerIndexAPI {
   selectStickerFiles: () => Promise<string[]>
   listStickers: () => Promise<Array<{ id: string; name: string; image: string }>>
   deleteSticker: (stickerId: string) => Promise<boolean>
+
+  loadPreferences(): Promise<{
+    favoriteIds: (number | string)[]
+    recentIds: (number | string)[]
+  }>
+
+  savePreferences(preferences: {
+    favoriteIds: (number | string)[]
+    recentIds: (number | string)[]
+  }): Promise<boolean>
 }
 
 declare global {

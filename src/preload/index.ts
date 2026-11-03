@@ -12,7 +12,14 @@ const api = {
     ipcRenderer.invoke('stickers:list'),
 
   deleteSticker: (stickerId: string): Promise<boolean> =>
-    ipcRenderer.invoke('stickers:delete', stickerId)
+    ipcRenderer.invoke('stickers:delete', stickerId),
+
+  loadPreferences: () => ipcRenderer.invoke('stickers:load-preferences'),
+
+  savePreferences: (preferences: {
+    favoriteIds: (number | string)[]
+    recentIds: (number | string)[]
+  }) => ipcRenderer.invoke('stickers:save-preferences', preferences)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

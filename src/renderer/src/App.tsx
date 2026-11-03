@@ -21,6 +21,7 @@ function App(): React.JSX.Element {
   const copyRequestId = useRef(0)
   const [importStatus, setImportStatus] = useState('')
   const importStatusTimeout = useRef<number | null>(null)
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false)
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -37,6 +38,13 @@ function App(): React.JSX.Element {
 
       if (!cancelled) {
         setAllStickers([...stickers, ...importedStickers])
+        const preferences = await window.api.loadPreferences()
+
+        if (!cancelled) {
+          setFavoriteIds(preferences.favoriteIds)
+          setRecentIds(preferences.recentIds)
+          setPreferencesLoaded(true)
+        }
       }
     } catch (error) {
       console.error('Failed to load imported stickers:', error)
@@ -53,6 +61,23 @@ function App(): React.JSX.Element {
     }
   }
 }, [])
+
+useEffect(() => {
+  if (!preferencesLoaded) return
+
+  const savePreferences = async () => {
+    try {
+      await window.api.savePreferences({
+        favoriteIds,
+        recentIds
+      })
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
+    }
+  }
+
+  void savePreferences()
+}, [favoriteIds, recentIds, preferencesLoaded])
 
   const toggleFavorite = (stickerId: number | string) => {
   setFavoriteIds((currentIds) =>
