@@ -8,8 +8,7 @@ type Sticker = {
   image: string
 }
 
-const stickers: Sticker[] = [
-]
+const stickers: Sticker[] = []
 
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('all')
@@ -30,71 +29,68 @@ function App(): React.JSX.Element {
   }
 
   useEffect(() => {
-  let cancelled = false
+    let cancelled = false
 
-  const loadStickers = async () => {
-    try {
-      const importedStickers = await window.api.listStickers()
-
-      if (!cancelled) {
-        setAllStickers([...stickers, ...importedStickers])
-        const preferences = await window.api.loadPreferences()
+    const loadStickers = async (): Promise<void> => {
+      try {
+        const importedStickers = await window.api.listStickers()
 
         if (!cancelled) {
-          setFavoriteIds(preferences.favoriteIds)
-          setRecentIds(preferences.recentIds)
-          setPreferencesLoaded(true)
+          setAllStickers([...stickers, ...importedStickers])
+          const preferences = await window.api.loadPreferences()
+
+          if (!cancelled) {
+            setFavoriteIds(preferences.favoriteIds)
+            setRecentIds(preferences.recentIds)
+            setPreferencesLoaded(true)
+          }
         }
+      } catch (error) {
+        console.error('Failed to load imported stickers:', error)
       }
-    } catch (error) {
-      console.error('Failed to load imported stickers:', error)
     }
-  }
 
-  void loadStickers()
+    void loadStickers()
 
-  return () => {
-    cancelled = true
+    return () => {
+      cancelled = true
 
-    if (importStatusTimeout.current !== null) {
-      window.clearTimeout(importStatusTimeout.current)
+      if (importStatusTimeout.current !== null) {
+        window.clearTimeout(importStatusTimeout.current)
+      }
     }
-  }
-}, [])
+  }, [])
 
-useEffect(() => {
-  if (!preferencesLoaded) return
+  useEffect(() => {
+    if (!preferencesLoaded) return
 
-  const savePreferences = async () => {
-    try {
-      await window.api.savePreferences({
-        favoriteIds,
-        recentIds
-      })
-    } catch (error) {
-      console.error('Failed to save preferences:', error)
+    const savePreferences = async (): Promise<void> => {
+      try {
+        await window.api.savePreferences({
+          favoriteIds,
+          recentIds
+        })
+      } catch (error) {
+        console.error('Failed to save preferences:', error)
+      }
     }
-  }
 
-  void savePreferences()
-}, [favoriteIds, recentIds, preferencesLoaded])
+    void savePreferences()
+  }, [favoriteIds, recentIds, preferencesLoaded])
 
-  const toggleFavorite = (stickerId: number | string) => {
-  setFavoriteIds((currentIds) =>
-    currentIds.includes(stickerId)
-      ? currentIds.filter((id) => id !== stickerId)
-      : [...currentIds, stickerId]
+  const toggleFavorite = (stickerId: number | string): void => {
+    setFavoriteIds((currentIds) =>
+      currentIds.includes(stickerId)
+        ? currentIds.filter((id) => id !== stickerId)
+        : [...currentIds, stickerId]
     )
   }
 
-  const markAsRecent = (stickerId: number | string) => {
-    setRecentIds((currentIds) => [
-      stickerId,
-      ...currentIds.filter((id) => id !== stickerId)
-    ])
+  const markAsRecent = (stickerId: number | string): void => {
+    setRecentIds((currentIds) => [stickerId, ...currentIds.filter((id) => id !== stickerId)])
   }
 
-  const handleStickerClick = async (sticker: Sticker) => {
+  const handleStickerClick = async (sticker: Sticker): Promise<void> => {
     const requestId = ++copyRequestId.current
     try {
       setCopyStatus('Copying...')
@@ -149,21 +145,21 @@ useEffect(() => {
           }
         }, 2500)
       }
-      } catch (error) {
-        console.error('Sticker copy failed:', error)
+    } catch (error) {
+      console.error('Sticker copy failed:', error)
 
-        if (requestId === copyRequestId.current) {
-          setCopyStatus('Could not copy sticker.')
-          window.setTimeout(() => {
-            if (requestId === copyRequestId.current) {
-              setCopyStatus('')
-            }
-          }, 2500)
+      if (requestId === copyRequestId.current) {
+        setCopyStatus('Could not copy sticker.')
+        window.setTimeout(() => {
+          if (requestId === copyRequestId.current) {
+            setCopyStatus('')
+          }
+        }, 2500)
       }
     }
   }
 
-  const handleImportStickers = async () => {
+  const handleImportStickers = async (): Promise<void> => {
     try {
       if (importStatusTimeout.current !== null) {
         window.clearTimeout(importStatusTimeout.current)
@@ -189,7 +185,7 @@ useEffect(() => {
     }
   }
 
-  const showImportStatus = (message: string) => {
+  const showImportStatus = (message: string): void => {
     if (importStatusTimeout.current !== null) {
       window.clearTimeout(importStatusTimeout.current)
     }
@@ -202,7 +198,7 @@ useEffect(() => {
     }, 1500)
   }
 
-  const handleDeleteSticker = async (sticker: Sticker) => {
+  const handleDeleteSticker = async (sticker: Sticker): Promise<void> => {
     if (typeof sticker.id !== 'string') {
       return
     }
@@ -222,17 +218,11 @@ useEffect(() => {
         throw new Error('Could not delete sticker file')
       }
 
-      setAllStickers((current) =>
-        current.filter((item) => item.id !== sticker.id)
-      )
+      setAllStickers((current) => current.filter((item) => item.id !== sticker.id))
 
-      setFavoriteIds((current) =>
-        current.filter((id) => id !== sticker.id)
-      )
+      setFavoriteIds((current) => current.filter((id) => id !== sticker.id))
 
-      setRecentIds((current) =>
-        current.filter((id) => id !== sticker.id)
-      )
+      setRecentIds((current) => current.filter((id) => id !== sticker.id))
 
       setCopyStatus(`${sticker.name} deleted.`)
 
@@ -248,29 +238,23 @@ useEffect(() => {
   const normalizedSearch = searchTerm.trim().toLowerCase()
 
   const visibleStickers = allStickers.filter((sticker) => {
-    const matchesSearch = sticker.name
-      .toLowerCase()
-      .includes(normalizedSearch)
+    const matchesSearch = sticker.name.toLowerCase().includes(normalizedSearch)
 
     const matchesTab =
       activeTab === 'all' ||
-      (activeTab === 'favorites' &&
-        favoriteIds.includes(sticker.id)) ||
-      (activeTab === 'recent' &&
-        recentIds.includes(sticker.id))
+      (activeTab === 'favorites' && favoriteIds.includes(sticker.id)) ||
+      (activeTab === 'recent' && recentIds.includes(sticker.id))
 
     return matchesSearch && matchesTab
   })
 
   const orderedStickers =
-  activeTab === 'recent'
-    ? recentIds
-        .map((id) => allStickers.find((sticker) => sticker.id === id))
-        .filter((sticker) => sticker !== undefined)
-        .filter((sticker) =>
-          sticker.name.toLowerCase().includes(normalizedSearch)
-        )
-    : visibleStickers
+    activeTab === 'recent'
+      ? recentIds
+          .map((id) => allStickers.find((sticker) => sticker.id === id))
+          .filter((sticker) => sticker !== undefined)
+          .filter((sticker) => sticker.name.toLowerCase().includes(normalizedSearch))
+      : visibleStickers
 
   return (
     <main className="sticker-app">
@@ -303,11 +287,7 @@ useEffect(() => {
         </label>
       </section>
 
-      <button
-        type="button"
-        className="import-button"
-        onClick={() => void handleImportStickers()}
-      >
+      <button type="button" className="import-button" onClick={() => void handleImportStickers()}>
         + Import sticker
       </button>
 
@@ -326,9 +306,7 @@ useEffect(() => {
         </button>
 
         <button
-          className={
-            activeTab === 'favorites' ? 'tab active' : 'tab'
-          }
+          className={activeTab === 'favorites' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('favorites')}
         >
           Favorites
@@ -352,8 +330,7 @@ useEffect(() => {
         <div className="section-heading">
           <h2>{sectionTitles[activeTab]}</h2>
           <span className="sticker-count">
-            {orderedStickers.length}{' '}
-            {orderedStickers.length === 1 ? 'sticker' : 'stickers'}
+            {orderedStickers.length} {orderedStickers.length === 1 ? 'sticker' : 'stickers'}
           </span>
         </div>
 
@@ -370,9 +347,7 @@ useEffect(() => {
                       : `Add ${sticker.name} to favorites`
                   }
                   title={
-                    favoriteIds.includes(sticker.id)
-                      ? 'Remove from favorites'
-                      : 'Add to favorites'
+                    favoriteIds.includes(sticker.id) ? 'Remove from favorites' : 'Add to favorites'
                   }
                   onClick={() => toggleFavorite(sticker.id)}
                 >
@@ -385,11 +360,7 @@ useEffect(() => {
                   title={`Use ${sticker.name}`}
                   onClick={() => void handleStickerClick(sticker)}
                 >
-                  <img
-                    src={sticker.image}
-                    alt={sticker.name}
-                    draggable={false}
-                  />
+                  <img src={sticker.image} alt={sticker.name} draggable={false} />
                 </button>
 
                 {typeof sticker.id === 'string' && (
@@ -420,11 +391,11 @@ useEffect(() => {
             <h3>
               {normalizedSearch
                 ? 'No stickers found'
-                :activeTab === 'all'
-                ? 'Your collection starts here'
-                : activeTab === 'favorites'
-                  ? 'No favorite stickers yet'
-                  : 'No recently used stickers'}
+                : activeTab === 'all'
+                  ? 'Your collection starts here'
+                  : activeTab === 'favorites'
+                    ? 'No favorite stickers yet'
+                    : 'No recently used stickers'}
             </h3>
 
             <p>

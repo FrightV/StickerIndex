@@ -1,23 +1,19 @@
-node_modules
-dist
-out
-.DS_Store
-.eslintcache
-*.log*
+# Dependencies
+node_modules/
 
-# Arquivos gerados e compilações
+# Build files
 dist/
 out/
 release/
 *.tsbuildinfo
 
-# Arquivos de ambiente e segredos
+# Environment and secrets
 .env
 .env.*
 !.env.example
 !.env.*.example
 
-# Bancos de dados e arquivos locais
+# Local data
 *.db
 *.sqlite
 *.sqlite3
@@ -28,21 +24,26 @@ user-data/
 stickers-local/
 
 # Logs
+*.log*
 logs/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# Sistema operacional
+# Operating system
+.DS_Store
 Thumbs.db
 Desktop.ini
 
-# Editores
+# Editors
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
 
-# Arquivos temporários
+# Temporary files
 *.tmp
 *.temp
+
+# ESLint
+.eslintcache
