@@ -134,3 +134,7 @@ The generated installer will be available inside the `dist` directory.
 ## Author
 
 Created by [FrightV](https://github.com/FrightV).
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
