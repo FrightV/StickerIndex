@@ -21,6 +21,34 @@ function App(): React.JSX.Element {
   const [importStatus, setImportStatus] = useState('')
   const importStatusTimeout = useRef<number | null>(null)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+  const handleKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== '/') return
+
+    const target = event.target
+
+    if (
+      target instanceof HTMLElement &&
+      (
+        target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      )
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    searchInputRef.current?.focus()
+  }
+
+  window.addEventListener('keydown', handleKeyDown)
+
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown)
+  }
+}, [])
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -335,6 +363,7 @@ function App(): React.JSX.Element {
           </span>
 
           <input
+            ref={searchInputRef}
             type="search"
             placeholder="Search stickers..."
             aria-label="Search stickers"
