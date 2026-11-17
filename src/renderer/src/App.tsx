@@ -21,6 +21,34 @@ function App(): React.JSX.Element {
   const [importStatus, setImportStatus] = useState('')
   const importStatusTimeout = useRef<number | null>(null)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+  const handleKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== '/') return
+
+    const target = event.target
+
+    if (
+      target instanceof HTMLElement &&
+      (
+        target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      )
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    searchInputRef.current?.focus()
+  }
+
+  window.addEventListener('keydown', handleKeyDown)
+
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown)
+  }
+}, [])
 
   const sectionTitles: Record<Tab, string> = {
     all: 'My stickers',
@@ -90,15 +118,31 @@ function App(): React.JSX.Element {
     setRecentIds((currentIds) => [stickerId, ...currentIds.filter((id) => id !== stickerId)])
   }
 
+
   const handleStickerClick = async (sticker: Sticker): Promise<void> => {
     const requestId = ++copyRequestId.current
+
     try {
       setCopyStatus('Copying...')
 
-      let imageDataUrl: string
+      let blob: Blob
 
       if (sticker.image.startsWith('data:image/')) {
-        imageDataUrl = sticker.image
+        const parts = sticker.image.split(',')
+        const mimeType = parts[0].match(/:(.*?);/)?.[1]
+
+        if (!mimeType) {
+          throw new Error('Invalid image format')
+        }
+
+        const binary = atob(parts[1])
+        const bytes = new Uint8Array(binary.length)
+
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i)
+        }
+
+        blob = new Blob([bytes], { type: mimeType })
       } else {
         const response = await fetch(sticker.image)
 
@@ -106,27 +150,53 @@ function App(): React.JSX.Element {
           throw new Error('Could not load sticker image')
         }
 
-        const blob = await response.blob()
+        blob = await response.blob()
+      }
 
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
-          throw new Error('Unsupported image format')
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
+        throw new Error('Unsupported image format')
+      }
+
+      const bitmap = await createImageBitmap(blob)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+
+      const context = canvas.getContext('2d')
+
+      if (!context) {
+        bitmap.close()
+        throw new Error('Could not process sticker image')
+      }
+
+      context.drawImage(bitmap, 0, 0)
+      bitmap.close()
+
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) {
+            resolve(result)
+          } else {
+            reject(new Error('Could not convert image to PNG'))
+          }
+        }, 'image/png')
+      })
+
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result)
+          } else {
+            reject(new Error('Could not convert image'))
+          }
         }
 
-        imageDataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-
-          reader.onload = () => {
-            if (typeof reader.result === 'string') {
-              resolve(reader.result)
-            } else {
-              reject(new Error('Could not convert image'))
-            }
-          }
-
-          reader.onerror = () => reject(new Error('Could not read image'))
-          reader.readAsDataURL(blob)
-        })
-      }
+        reader.onerror = () => reject(new Error('Could not read image'))
+        reader.readAsDataURL(pngBlob)
+      })
 
       const copied = await window.api.copySticker(imageDataUrl)
 
@@ -150,6 +220,7 @@ function App(): React.JSX.Element {
 
       if (requestId === copyRequestId.current) {
         setCopyStatus('Could not copy sticker.')
+
         window.setTimeout(() => {
           if (requestId === copyRequestId.current) {
             setCopyStatus('')
@@ -168,17 +239,33 @@ function App(): React.JSX.Element {
 
       setImportStatus('Selecting files...')
 
-      const filePaths = await window.api.selectStickerFiles()
+      const result = await window.api.selectStickerFiles()
 
-      if (filePaths.length === 0) {
+      if (result.importedPaths.length === 0 && result.rejectedFiles.length === 0) {
         showImportStatus('No files selected.')
         return
       }
 
-      const importedStickers = await window.api.listStickers()
+      if (result.importedPaths.length > 0) {
+        const importedStickers = await window.api.listStickers()
 
-      setAllStickers([...stickers, ...importedStickers])
-      showImportStatus(`${filePaths.length} file(s) imported.`)
+        setAllStickers([...stickers, ...importedStickers])
+      }
+
+      const importedCount = result.importedPaths.length
+      const rejectedCount = result.rejectedFiles.length
+
+      if (rejectedCount > 0 && importedCount > 0) {
+        showImportStatus(
+          `${importedCount} file(s) imported. ${rejectedCount} rejected (over 5 MB).`
+        )
+      } else if (rejectedCount > 0) {
+        showImportStatus(
+          `${rejectedCount} file(s) rejected. Maximum size: 5 MB.`
+        )
+      } else {
+        showImportStatus(`${importedCount} file(s) imported.`)
+      }
     } catch (error) {
       console.error('Sticker import failed:', error)
       showImportStatus('Could not import stickers.')
@@ -276,6 +363,7 @@ function App(): React.JSX.Element {
           </span>
 
           <input
+            ref={searchInputRef}
             type="search"
             placeholder="Search stickers..."
             aria-label="Search stickers"

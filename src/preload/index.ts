@@ -6,7 +6,10 @@ const api = {
   copySticker: (imageDataUrl: string): Promise<boolean> =>
     ipcRenderer.invoke('stickers:copy', imageDataUrl),
 
-  selectStickerFiles: (): Promise<string[]> => ipcRenderer.invoke('stickers:select-files'),
+  selectStickerFiles: (): Promise<{
+    importedPaths: string[]
+    rejectedFiles: string[]
+  }> => ipcRenderer.invoke('stickers:select-files'),
 
   listStickers: (): Promise<Array<{ id: string; name: string; image: string }>> =>
     ipcRenderer.invoke('stickers:list'),
