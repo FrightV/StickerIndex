@@ -2,7 +2,10 @@ import { ElectronAPI } from '@electron-toolkit/preload'
 
 interface StickerIndexAPI {
   copySticker: (imageDataUrl: string) => Promise<boolean>
-  selectStickerFiles: () => Promise<string[]>
+  selectStickerFiles: () => Promise<{
+    importedPaths: string[]
+    rejectedFiles: string[]
+  }>
   listStickers: () => Promise<Array<{ id: string; name: string; image: string }>>
   deleteSticker: (stickerId: string) => Promise<boolean>
 

@@ -178,7 +178,10 @@ ipcMain.handle('stickers:select-files', async () => {
   })
 
   if (result.canceled) {
-    return []
+    return {
+      importedPaths: [],
+      rejectedFiles: []
+    }
   }
 
   try {
@@ -187,6 +190,8 @@ ipcMain.handle('stickers:select-files', async () => {
     await mkdir(stickersDirectory, { recursive: true })
 
     const importedPaths: string[] = []
+    const rejectedFiles: string[] = []
+    const maxFileSize = 5 * 1024 * 1024
 
     for (const sourcePath of result.filePaths) {
       const extension = extname(sourcePath).toLowerCase()
@@ -194,6 +199,13 @@ ipcMain.handle('stickers:select-files', async () => {
       const allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp']
 
       if (!allowedExtensions.includes(extension)) {
+        continue
+      }
+
+      const fileInfo = await stat(sourcePath)
+
+      if (fileInfo.size > maxFileSize) {
+        rejectedFiles.push(basename(sourcePath))
         continue
       }
 
@@ -206,14 +218,20 @@ ipcMain.handle('stickers:select-files', async () => {
           .trim()
           .replace(/[. ]+$/, '') || 'sticker'
 
-      const destinationPath = join(stickersDirectory, `${safeName}-${randomUUID()}${extension}`)
+      const destinationPath = join(
+        stickersDirectory,
+        `${safeName}-${randomUUID()}${extension}`
+      )
 
       await copyFile(sourcePath, destinationPath)
 
       importedPaths.push(destinationPath)
     }
 
-    return importedPaths
+    return {
+      importedPaths,
+      rejectedFiles
+    }
   } catch (error) {
     console.error('Failed to import stickers:', error)
     throw error

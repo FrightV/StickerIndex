@@ -211,17 +211,33 @@ function App(): React.JSX.Element {
 
       setImportStatus('Selecting files...')
 
-      const filePaths = await window.api.selectStickerFiles()
+      const result = await window.api.selectStickerFiles()
 
-      if (filePaths.length === 0) {
+      if (result.importedPaths.length === 0 && result.rejectedFiles.length === 0) {
         showImportStatus('No files selected.')
         return
       }
 
-      const importedStickers = await window.api.listStickers()
+      if (result.importedPaths.length > 0) {
+        const importedStickers = await window.api.listStickers()
 
-      setAllStickers([...stickers, ...importedStickers])
-      showImportStatus(`${filePaths.length} file(s) imported.`)
+        setAllStickers([...stickers, ...importedStickers])
+      }
+
+      const importedCount = result.importedPaths.length
+      const rejectedCount = result.rejectedFiles.length
+
+      if (rejectedCount > 0 && importedCount > 0) {
+        showImportStatus(
+          `${importedCount} file(s) imported. ${rejectedCount} rejected (over 5 MB).`
+        )
+      } else if (rejectedCount > 0) {
+        showImportStatus(
+          `${rejectedCount} file(s) rejected. Maximum size: 5 MB.`
+        )
+      } else {
+        showImportStatus(`${importedCount} file(s) imported.`)
+      }
     } catch (error) {
       console.error('Sticker import failed:', error)
       showImportStatus('Could not import stickers.')
