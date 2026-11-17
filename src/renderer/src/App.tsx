@@ -90,15 +90,31 @@ function App(): React.JSX.Element {
     setRecentIds((currentIds) => [stickerId, ...currentIds.filter((id) => id !== stickerId)])
   }
 
+
   const handleStickerClick = async (sticker: Sticker): Promise<void> => {
     const requestId = ++copyRequestId.current
+
     try {
       setCopyStatus('Copying...')
 
-      let imageDataUrl: string
+      let blob: Blob
 
       if (sticker.image.startsWith('data:image/')) {
-        imageDataUrl = sticker.image
+        const parts = sticker.image.split(',')
+        const mimeType = parts[0].match(/:(.*?);/)?.[1]
+
+        if (!mimeType) {
+          throw new Error('Invalid image format')
+        }
+
+        const binary = atob(parts[1])
+        const bytes = new Uint8Array(binary.length)
+
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i)
+        }
+
+        blob = new Blob([bytes], { type: mimeType })
       } else {
         const response = await fetch(sticker.image)
 
@@ -106,27 +122,53 @@ function App(): React.JSX.Element {
           throw new Error('Could not load sticker image')
         }
 
-        const blob = await response.blob()
+        blob = await response.blob()
+      }
 
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
-          throw new Error('Unsupported image format')
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
+        throw new Error('Unsupported image format')
+      }
+
+      const bitmap = await createImageBitmap(blob)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+
+      const context = canvas.getContext('2d')
+
+      if (!context) {
+        bitmap.close()
+        throw new Error('Could not process sticker image')
+      }
+
+      context.drawImage(bitmap, 0, 0)
+      bitmap.close()
+
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) {
+            resolve(result)
+          } else {
+            reject(new Error('Could not convert image to PNG'))
+          }
+        }, 'image/png')
+      })
+
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result)
+          } else {
+            reject(new Error('Could not convert image'))
+          }
         }
 
-        imageDataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-
-          reader.onload = () => {
-            if (typeof reader.result === 'string') {
-              resolve(reader.result)
-            } else {
-              reject(new Error('Could not convert image'))
-            }
-          }
-
-          reader.onerror = () => reject(new Error('Could not read image'))
-          reader.readAsDataURL(blob)
-        })
-      }
+        reader.onerror = () => reject(new Error('Could not read image'))
+        reader.readAsDataURL(pngBlob)
+      })
 
       const copied = await window.api.copySticker(imageDataUrl)
 
@@ -150,6 +192,7 @@ function App(): React.JSX.Element {
 
       if (requestId === copyRequestId.current) {
         setCopyStatus('Could not copy sticker.')
+
         window.setTimeout(() => {
           if (requestId === copyRequestId.current) {
             setCopyStatus('')
