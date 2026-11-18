@@ -1,6 +1,6 @@
 {
   "name": "sticker-index",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight desktop sticker manager for Windows.",
   "main": "./out/main/index.js",
   "author": "FrightV",
